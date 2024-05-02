@@ -98,7 +98,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rsa"
+name = "rsa_tool"
 version = "0.1.0"
 dependencies = [
  "num-bigint",

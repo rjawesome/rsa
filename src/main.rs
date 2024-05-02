@@ -1,6 +1,6 @@
 mod args;
 use std::{env, error::Error, fs};
-
+use rsa_tool::rsa;
 use args::{DecArgs, EncArgs, GenArgs, Type};
 
 fn main() -> Result<(), Box<dyn Error>> {
