@@ -1,37 +1,71 @@
 // port to rug
 
-use std::env;
-use std::fs;
+use std::fmt;
 use std::str::FromStr;
 use num_traits::pow;
 use num_bigint::BigUint;
 use std::error::Error;
-use args::Type;
 
 mod utils;
-mod args;
-mod errors;
 
-pub fn run() {
-    let mut all_args = env::args();
-    let op_type = args::get_type(&mut all_args).unwrap_or_else(|err| {
-        panic!("Error in Arguments: {}", err);
-    });
-
-    let result = match op_type {
-        Type::GenKeys => generate_keys(all_args),
-        Type::Decode => decode_text(all_args),
-        Type::Encode => encode_text(all_args)
-    };
-
-    result.unwrap_or_else(|err| {
-        panic!("Error: {}", err.to_string());
-    });
+pub struct PubKey {
+    pub e: BigUint,
+    pub n: BigUint
 }
 
-fn generate_keys(os_args: env::Args) -> Result<(), Box<dyn Error>> {
-    let args = args::GenArgs::new(os_args)?;
+impl fmt::Display for PubKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{},{}", &self.e, &self.n)
+    }
+}
 
+impl PubKey {
+    pub fn new(pubtext: &str) -> Result<PubKey, &'static str> {
+        let mut split = pubtext.split(",");
+        let e_str = match split.next() {
+            Some(x) => x,
+            None => return Err("Invalid Public Key")
+        };
+        let e = BigUint::from_str(e_str).or_else(|_| Err("Invalid public key"))?;
+        let n_str = match split.next() {
+            Some(x) => x,
+            None => return Err("Invalid public key")
+        };
+        let n = BigUint::from_str(n_str).or_else(|_| Err("Invalid public key"))?;
+        Ok(PubKey {e, n})
+    }
+}
+
+pub struct PrivKey {
+    pub d: BigUint,
+    pub n: BigUint
+}
+
+impl PrivKey {
+    pub fn new(privtext: &str) -> Result<PrivKey, &'static str> {
+        let mut split = privtext.split(",");
+        let d_str = match split.next() {
+            Some(x) => x,
+            None => return Err("Invalid private key")
+        };
+        let d = BigUint::from_str(d_str).or_else(|_| Err("Invalid private key"))?;
+        let n_str = match split.next() {
+            Some(x) => x,
+            None => return Err("Invalid private key")
+        };
+        let n = BigUint::from_str(n_str).or_else(|_| Err("Invalid private key"))?;
+        Ok(PrivKey {d, n})
+    }
+}
+
+
+impl fmt::Display for PrivKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{},{}", &self.d, &self.n)
+    }
+}
+
+pub fn generate_keys() -> Result<(PubKey, PrivKey), Box<dyn Error>> {
     // generate variables
     let p = utils::get_prime();
     let pn1 = &p - 1u32;
@@ -42,63 +76,17 @@ fn generate_keys(os_args: env::Args) -> Result<(), Box<dyn Error>> {
     let e = BigUint::from(pow(2u32, 16) + 1);
     let d = utils::inverse(&e, &lcm);
 
-    // fmt keys
-    let pubkey = format!("{},{}", &e, &n);
-    let privkey = format!("{},{}", &d, &n);
-    fs::write(&args.pub_filename, pubkey)?;
-    fs::write(&args.priv_filename, privkey)?;
-
-    Ok(())
+    Ok((PubKey {e, n: n.clone()}, PrivKey {d, n}))
 }
 
-fn encode_text(os_args: env::Args) -> Result<(), Box<dyn Error>> {
-    let args = args::EncArgs::new(os_args)?;
-
-    // get variables
-    let pubtext = fs::read_to_string(args.pub_filename)?;
-    let mut split = pubtext.split(",");
-    let plaintext = fs::read(args.plaintext_filename)?;
-    let e_str = match split.next() {
-        Some(x) => x,
-        None => return Err(Box::new(errors::InvalidFileError))
-    };
-    let e = BigUint::from_str(e_str).or_else(|_| Err(Box::new(errors::InvalidFileError)))?;
-    let n_str = match split.next() {
-        Some(x) => x,
-        None => return Err(Box::new(errors::InvalidFileError))
-    };
-    let n = BigUint::from_str(n_str).or_else(|_| Err(Box::new(errors::InvalidFileError)))?;
-
-    // encoding
-    let plain_as_int = BigUint::from_bytes_be(&plaintext);
-    let encoded = plain_as_int.modpow(&e, &n); 
-    fs::write(args.ciphertext_filename, encoded.to_bytes_be())?;
-
-    Ok(())
+pub fn encode_text(plaintext: &[u8], pubkey: &PubKey) -> Result<Vec<u8>, Box<dyn Error>> {
+    let plain_as_int = BigUint::from_bytes_be(plaintext);
+    let encoded = plain_as_int.modpow(&pubkey.e, &pubkey.n); 
+    Ok(encoded.to_bytes_be())
 }
 
-fn decode_text(os_args: env::Args) -> Result<(), Box<dyn Error>> {
-    let args = args::DecArgs::new(os_args)?;
-
-    // get variables
-    let privtext = fs::read_to_string(args.priv_filename)?;
-    let mut split = privtext.split(",");
-    let ciphertext = fs::read(args.ciphertext_filename)?;
-    let d_str = match split.next() {
-        Some(x) => x,
-        None => return Err(Box::new(errors::InvalidFileError))
-    };
-    let d = BigUint::from_str(d_str).or_else(|_| Err(Box::new(errors::InvalidFileError)))?;
-    let n_str = match split.next() {
-        Some(x) => x,
-        None => return Err(Box::new(errors::InvalidFileError))
-    };
-    let n = BigUint::from_str(n_str).or_else(|_| Err(Box::new(errors::InvalidFileError)))?;
-
-    // encoding
-    let cipher_as_int = BigUint::from_bytes_be(&ciphertext);
-    let decoded = cipher_as_int.modpow(&d, &n); 
-    fs::write(args.plaintext_filename, decoded.to_bytes_be())?;
-
-    Ok(())
+pub fn decode_text(ciphertext: &[u8], privkey: &PrivKey) -> Result<Vec<u8>, Box<dyn Error>> {
+    let cipher_as_int = BigUint::from_bytes_be(ciphertext);
+    let decoded = cipher_as_int.modpow(&privkey.d, &privkey.n); 
+    Ok(decoded.to_bytes_be())
 }
