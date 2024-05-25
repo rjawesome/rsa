@@ -1,7 +1,7 @@
 mod args;
 use std::{env, error::Error, fs};
-use rsa_tool::rsa;
-use args::{DecArgs, EncArgs, GenArgs, Type};
+use rsa_tool::{messaging::{client, server}, rsa};
+use args::{ClientArgs, DecArgs, EncArgs, GenArgs, SrvArgs, Type};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut all_args = env::args();
@@ -29,6 +29,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             let plaintext = fs::read(&enc_args.plaintext_filename).or_else(|_| Err("Error reading plaintext file"))?;
             let ciphertext = rsa::encode_text(&plaintext, &pubkey)?;
             fs::write(&enc_args.ciphertext_filename, ciphertext).or_else(|_| Err("Error writing to ciphertext file"))?;
+        },
+        Type::Server => {
+            let srv_args = SrvArgs::new(all_args)?;
+            server::run_server(srv_args.port)?;
+        },
+        Type::Client => {
+            let cli_args = ClientArgs::new(all_args)?;
+            client::run_client(&cli_args.host, cli_args.port)?;
         }
     }
 
