@@ -1,8 +1,8 @@
-use num_bigint::Sign;
-use rand::distributions::Uniform;
-use rand::Rng;
-use num_bigint::{BigInt, BigUint, RandomBits};
-use num_traits::{Zero, One};
+use ibig::{ibig, modular::ModuloRing, ubig, IBig, UBig};
+use num_traits::{One, Zero};
+use ::rand::{thread_rng, Rng};
+
+use crate::constants::PRIME_BITS;
 
 #[cfg(test)]
 mod tests {
@@ -10,84 +10,87 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let result = inverse(&BigUint::from(23u32), &BigUint::from(180u32));
-        assert_eq!(result, BigUint::from(47u32));
+        let result = inverse(&ubig!(23), &ubig!(180));
+        assert_eq!(result, ubig!(47));
     }
 }
 
-pub fn inverse(number: &BigUint, modulus: &BigUint) -> BigUint {
-    let mut ops: Vec<BigInt> = Vec::new();
+pub fn inverse(number: &UBig, modulus: &UBig) -> UBig {
+    let mut ops: Vec<IBig> = Vec::new();
     let mut a = modulus.clone();
     let mut b = number.clone();
-    while !One::is_one(&b) {
+    while !b.is_one() {
         let div = &a / &b;
         let temp = b;
-        b = &a % &temp;
+        b = a % &temp;
         a = temp;
-        ops.push(BigInt::from_biguint(Sign::Plus, div));
+        ops.push(IBig::from(div));
     }
 
-    let mut c: BigInt = One::one();
-    let mut d: BigInt = Zero::zero();
-    for div in ops.iter().rev() {
+    let mut c = ibig!(1);
+    let mut d = ibig!(0);
+    for div in ops.into_iter().rev() {
         let temp = c;
-        c = d + &temp * -div;
+        c = d + -div * &temp;
         d = temp;
     }
 
-    if c.sign() == Sign::Minus {
-        c += BigInt::from_biguint(Sign::Plus, modulus.clone());
+    if c.signum() == ibig!(-1) {
+        c += IBig::from(modulus);
     }
 
-    c.to_biguint().unwrap()
+    UBig::try_from(c).unwrap()
 }
 
-pub fn gcd(a1: &BigUint, b1: &BigUint) -> BigUint {
+pub fn gcd(a1: &UBig, b1: &UBig) -> UBig {
     let mut a = if a1 > b1 { a1.clone() } else { b1.clone() };
     let mut b = if b1 > a1 { a1.clone() } else { b1.clone() };
-    while !Zero::is_zero(&b) {
+    while !b.is_zero() {
         let temp = b;
-        b = &a % &temp;
+        b = a % &temp;
         a = temp;
     }
     a
 }
 
-pub fn get_prime() -> BigUint {
-    let mut rng = rand::thread_rng();
+pub fn get_prime() -> UBig {
+    let mut rng = thread_rng();
     loop {
-        let unsigned: BigUint = rng.sample(RandomBits::new(1024));
+        let unsigned: UBig = rng.gen_range(ubig!(0)..ubig!(1) << PRIME_BITS);
         if is_prime(&unsigned) {
             return unsigned;
         }
     }
 }
 
-// num should be odd
-fn is_prime(num: &BigUint) -> bool {
-    if num % 2u32 == Zero::zero() {
+// Miller-Rabin Test
+fn is_prime(num: &UBig) -> bool {
+    if num % 2 == 0 {
         return false;
     }
 
-    let mut rng = rand::thread_rng();
-    let mut d: BigUint = num - 1u32;
+    let mut rng = thread_rng();
+    let mut d: UBig = num - 1u32;
     let mut s = 0;
-    while &d % 2u32 == Zero::zero() {
+    while &d % 2 == 0 {
         d /= 2u32;
         s += 1;
     }
 
+    let n_min_one = num - 1u32;
+    let ring = ModuloRing::new(num);
+
     for _ in 0..10 {
-        let a = rng.sample(Uniform::new(BigUint::from(2u32), num - 2u32));
-        let mut x = a.modpow(&d, num);
+        let a = rng.gen_range(ubig!(2)..=num - 2);
+        let mut x = ring.from(a).pow(&d).residue();
         for _ in 0..s {
-            let y = x.modpow(&BigUint::from(2u32), num);
-            if y == One::one() && x != One::one() && x != num - 1u32 {
+            let y = ring.from(&x).pow(&ubig!(2)).residue();
+            if y.is_one() && !x.is_one() && x != n_min_one {
                 return false;
             }
             x = y;
         }
-        if x != One::one() {
+        if !x.is_one() {
             return false;
         }
     }

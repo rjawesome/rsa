@@ -2,15 +2,16 @@
 
 use std::fmt;
 use std::str::FromStr;
-use num_traits::pow;
-use num_bigint::BigUint;
 use std::error::Error;
+
+use ibig::modular::ModuloRing;
+use ibig::UBig;
 
 mod utils;
 
 pub struct PubKey {
-    pub e: BigUint,
-    pub n: BigUint
+    pub e: UBig,
+    pub n: UBig
 }
 
 impl fmt::Display for PubKey {
@@ -26,19 +27,19 @@ impl PubKey {
             Some(x) => x,
             None => return Err("Invalid Public Key")
         };
-        let e = BigUint::from_str(e_str).or_else(|_| Err("Invalid public key"))?;
+        let e = UBig::from_str(e_str).or_else(|_| Err("Invalid public key"))?;
         let n_str = match split.next() {
             Some(x) => x,
             None => return Err("Invalid public key")
         };
-        let n = BigUint::from_str(n_str).or_else(|_| Err("Invalid public key"))?;
+        let n = UBig::from_str(n_str).or_else(|_| Err("Invalid public key"))?;
         Ok(PubKey {e, n})
     }
 }
 
 pub struct PrivKey {
-    pub d: BigUint,
-    pub n: BigUint
+    pub d: UBig,
+    pub n: UBig
 }
 
 impl PrivKey {
@@ -48,12 +49,12 @@ impl PrivKey {
             Some(x) => x,
             None => return Err("Invalid private key")
         };
-        let d = BigUint::from_str(d_str).or_else(|_| Err("Invalid private key"))?;
+        let d = UBig::from_str(d_str).or_else(|_| Err("Invalid private key"))?;
         let n_str = match split.next() {
             Some(x) => x,
             None => return Err("Invalid private key")
         };
-        let n = BigUint::from_str(n_str).or_else(|_| Err("Invalid private key"))?;
+        let n = UBig::from_str(n_str).or_else(|_| Err("Invalid private key"))?;
         Ok(PrivKey {d, n})
     }
 }
@@ -73,20 +74,20 @@ pub fn generate_keys() -> Result<(PubKey, PrivKey), Box<dyn Error>> {
     let qn1 = &q - 1u32;
     let n = p * q;
     let lcm = &pn1 * &qn1 / utils::gcd(&pn1, &qn1);
-    let e = BigUint::from(pow(2u32, 16) + 1);
+    let e = UBig::from((1u32 << 16) + 1);
     let d = utils::inverse(&e, &lcm);
 
     Ok((PubKey {e, n: n.clone()}, PrivKey {d, n}))
 }
 
 pub fn encode_text(plaintext: &[u8], pubkey: &PubKey) -> Result<Vec<u8>, Box<dyn Error>> {
-    let plain_as_int = BigUint::from_bytes_be(plaintext);
-    let encoded = plain_as_int.modpow(&pubkey.e, &pubkey.n); 
-    Ok(encoded.to_bytes_be())
+    let plain_as_int = UBig::from_be_bytes(plaintext);
+    let encoded = ModuloRing::new(&pubkey.n).from(plain_as_int).pow(&pubkey.e).residue();
+    Ok(encoded.to_be_bytes())
 }
 
 pub fn decode_text(ciphertext: &[u8], privkey: &PrivKey) -> Result<Vec<u8>, Box<dyn Error>> {
-    let cipher_as_int = BigUint::from_bytes_be(ciphertext);
-    let decoded = cipher_as_int.modpow(&privkey.d, &privkey.n); 
-    Ok(decoded.to_bytes_be())
+    let cipher_as_int = UBig::from_be_bytes(ciphertext);
+    let decoded = ModuloRing::new(&privkey.n).from(cipher_as_int).pow(&privkey.d).residue();
+    Ok(decoded.to_be_bytes())
 }
