@@ -56,7 +56,7 @@ pub fn gcd(a1: &BigUint, b1: &BigUint) -> BigUint {
 pub fn get_prime() -> BigUint {
     let mut rng = rand::thread_rng();
     loop {
-        let unsigned: BigUint = rng.sample(RandomBits::new(512));
+        let unsigned: BigUint = rng.sample(RandomBits::new(1024));
         if is_prime(&unsigned) {
             return unsigned;
         }

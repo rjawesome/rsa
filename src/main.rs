@@ -1,5 +1,5 @@
 mod args;
-use std::{env, error::Error, fs};
+use std::{env, error::Error, fs, time::SystemTime};
 use rsa_tool::{messaging::{client, server}, rsa};
 use args::{ClientArgs, DecArgs, EncArgs, GenArgs, SrvArgs, Type};
 
@@ -11,8 +11,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match op_type {
         Type::GenKeys => {
+            let start = SystemTime::now();
             let gen_args = GenArgs::new(all_args)?;
             let (pubkey, privkey) = rsa::generate_keys()?;
+            println!("Generating keys took {} ms.", SystemTime::now().duration_since(start).unwrap().as_millis());
             fs::write(&gen_args.pub_filename, pubkey.to_string()).or_else(|_| Err("Error writing to public key file"))?;
             fs::write(&gen_args.priv_filename, privkey.to_string()).or_else(|_| Err("Error writing to private key file"))?;
         },
