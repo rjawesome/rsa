@@ -1,28 +1,33 @@
 use std::error::Error;
-use std::io::{BufReader, BufWriter, Read, Write};
-use std::net::TcpListener;
+use std::thread;
 
-use crate::messaging::utils::{decode_message, u8_arr_to_len};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter};
+use tokio::net::TcpListener;
+use tokio::{select, task};
+
+use crate::messaging::utils::{recieve_messages, send_messages, u8_arr_to_len};
 use crate::rsa;
 
-pub fn run_server(port: u16) -> Result<(), Box<dyn Error>> {
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", port))?;
+#[tokio::main]
+pub async fn run_server(port: u16) -> Result<(), Box<dyn Error>> {
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     let (pubkey, privkey) = rsa::generate_keys()?;
     println!("Server Started");
-    for stream in listener.incoming() {
+    loop {
+        let main_stream = listener.accept().await?.0;
+        let (read_stream, write_stream) = main_stream.into_split();
         println!("Client Connected!");
-        let stream = stream.unwrap();
-        let mut reader = BufReader::new(&stream);
-        let mut writer= BufWriter::new(&stream);
+        let mut reader = BufReader::new(read_stream);
+        let mut writer= BufWriter::new(write_stream);
 
         // write pubkey
-        writer.write(pubkey.to_string().as_bytes())?;
-        writer.write(&[b'\n'])?;
-        writer.flush()?;
+        writer.write(pubkey.to_string().as_bytes()).await?;
+        writer.write(&[b'\n']).await?;
+        writer.flush().await?;
 
         // get AES key len
         let mut enc_key_len: [u8; 2] = [0; 2];
-        match reader.read_exact(&mut enc_key_len) {
+        match reader.read_exact(&mut enc_key_len).await {
             Ok(_) => (),
             Err(_) => continue
         };
@@ -34,34 +39,30 @@ pub fn run_server(port: u16) -> Result<(), Box<dyn Error>> {
 
         // get AES key
         let mut enc_aes_key = vec![0; enc_key_len];
-        match reader.read_exact(&mut enc_aes_key) {
+        match reader.read_exact(&mut enc_aes_key).await {
             Ok(_) => (),
             Err(_) => continue
         };
         let aes_key = rsa::decode_text(&enc_aes_key, &privkey)?;
+        let aes_key_2 = aes_key.clone();
 
-        // recieve messages
-        loop {
-            let mut len: [u8; 2] = [0; 2];
-            match reader.read_exact(&mut len) {
-                Ok(_) => (),
-                Err(_) => break
-            };
-            let len = u8_arr_to_len(len);
-            let mut iv: [u8; 16] = [0; 16];
-            match reader.read_exact(&mut iv) {
-                Ok(_) => (),
-                Err(_) => break
-            };
-            let mut enc_message: Vec<u8> = vec![0; len];
-            match reader.read_exact(&mut enc_message) {
-                Ok(_) => (),
-                Err(_) => break
-            };
-            let message = decode_message(&iv, &aes_key[0..16].try_into().unwrap(), &enc_message);
-            print!("Client: {}", message);
+        // messaging
+        let aes_key_ref = &aes_key[0..16];
+        let reciever = recieve_messages(&mut reader, aes_key_ref.try_into()?);
+        // let (sender_tx, mut sender_rx) = channel::<i32>(1);
+        let th = task::spawn_blocking(move || {
+            send_messages(&mut writer, &aes_key_2[0..16].try_into().unwrap()).unwrap();
+        });
+
+        select! {
+            () = reciever => {
+                drop(reader);
+            },
+            _ = th => {
+                drop(reader);
+            }
         }
+        
         println!("Client Disconnected!");
     }
-    Ok(())
 }
