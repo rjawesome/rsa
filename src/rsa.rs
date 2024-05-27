@@ -9,6 +9,16 @@ use ibig::UBig;
 
 mod utils;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gen() {
+        generate_keys().unwrap();
+    }
+}
+
 pub struct PubKey {
     pub e: UBig,
     pub n: UBig

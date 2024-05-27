@@ -1,5 +1,8 @@
+use std::time::SystemTime;
+
 use ibig::{ibig, modular::ModuloRing, ubig, IBig, UBig};
 use num_traits::{One, Zero};
+use rand::distributions::Uniform;
 use ::rand::{thread_rng, Rng};
 
 use crate::constants::PRIME_BITS;
@@ -54,43 +57,54 @@ pub fn gcd(a1: &UBig, b1: &UBig) -> UBig {
 }
 
 pub fn get_prime() -> UBig {
+    let mut count = 0;
     let mut rng = thread_rng();
+    let dist = Uniform::new(ubig!(0), ubig!(1) << PRIME_BITS);
     loop {
-        let unsigned: UBig = rng.gen_range(ubig!(0)..ubig!(1) << PRIME_BITS);
+        let unsigned: UBig = rng.sample(&dist);
         if is_prime(&unsigned) {
             return unsigned;
         }
+        count += 1;
     }
 }
 
 // Miller-Rabin Test
 fn is_prime(num: &UBig) -> bool {
-    if num % 2 == 0 {
+    if !num.bit(num.bit_len() - 1) {
         return false;
     }
 
     let mut rng = thread_rng();
     let mut d: UBig = num - 1u32;
     let mut s = 0;
-    while &d % 2 == 0 {
-        d /= 2u32;
+    while !d.bit(d.bit_len() - 1) {
+        d >>= 1;
         s += 1;
     }
 
     let n_min_one = num - 1u32;
     let ring = ModuloRing::new(num);
+    let two = ubig!(2);
+    let one = ring.from(1);
+    let min_one = ring.from(-1);
+    let dist = Uniform::new(&two, &n_min_one);
 
-    for _ in 0..10 {
-        let a = rng.gen_range(ubig!(2)..=num - 2);
-        let mut x = ring.from(a).pow(&d).residue();
+    // operate in modular the whole time
+    for _ in 0..5 {
+        let a = rng.sample(&dist);
+        let mut x = ring.from(a).pow(&d);
         for _ in 0..s {
-            let y = ring.from(&x).pow(&ubig!(2)).residue();
-            if y.is_one() && !x.is_one() && x != n_min_one {
+            if x == one {
+                break
+            }
+            let x_conditions = x != min_one;
+            x = x.clone() * x;
+            if x == one && x_conditions {
                 return false;
             }
-            x = y;
         }
-        if !x.is_one() {
+        if x != one {
             return false;
         }
     }
