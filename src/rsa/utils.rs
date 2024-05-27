@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use ibig::{ibig, modular::ModuloRing, ubig, IBig, UBig};
 use num_traits::{One, Zero};
 use rand::distributions::Uniform;
@@ -57,7 +55,6 @@ pub fn gcd(a1: &UBig, b1: &UBig) -> UBig {
 }
 
 pub fn get_prime() -> UBig {
-    let mut count = 0;
     let mut rng = thread_rng();
     let dist = Uniform::new(ubig!(0), ubig!(1) << PRIME_BITS);
     loop {
@@ -65,7 +62,6 @@ pub fn get_prime() -> UBig {
         if is_prime(&unsigned) {
             return unsigned;
         }
-        count += 1;
     }
 }
 

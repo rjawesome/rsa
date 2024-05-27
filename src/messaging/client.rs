@@ -1,12 +1,12 @@
 use std::error::Error;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::TcpStream;
 
 use rand::Rng;
 
 use crate::rsa;
 
-use super::utils::len_to_u8_arr;
+use super::utils::{generate_message, len_to_u8_arr};
 
 pub fn run_client(host: &str, port: u16) -> Result<(), Box<dyn Error>> {
     let stream = TcpStream::connect(format!("{}:{}", host, port))?;
@@ -38,11 +38,18 @@ pub fn run_client(host: &str, port: u16) -> Result<(), Box<dyn Error>> {
     writer.write(&enc_aes_key)?;
     writer.flush()?;
 
-    // print aes key
-    for byte in aes_key {
-        print!("{} ", byte);
+    println!("Connected to Server!");
+
+    // send messages
+    loop {
+        let mut buffer = String::new();
+        io::stdin().read_line(&mut buffer)?;
+        if buffer == "quit" {
+            break
+        }
+        writer.write(&generate_message(&buffer, &aes_key))?;
+        writer.flush()?;
     }
-    println!("");
 
     Ok(())
 }
