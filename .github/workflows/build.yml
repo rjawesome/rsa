@@ -24,6 +24,10 @@ jobs:
           - build: macos
             os: macos-latest
             target: x86_64-apple-darwin
+        
+          - build: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
 
     steps:
       - name: Checkout
@@ -70,8 +74,18 @@ jobs:
             echo "ASSET=$dirname.tar.gz" >> $GITHUB_ENV
           fi
 
+      - name: Set current date as env variable
+        run: echo -e "NOW=\"$(git rev-parse --abbrev-ref HEAD) $(date +'%Y-%m-%dT%H:%M:%S')\"\nTAG=$(date +%s)" >> $GITHUB_ENV
+      - name: tag snapshot
+        uses: tvdias/github-tagger@v0.0.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.TAG }}
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
+          name: RSA Tool ${{ env.NOW }}
+          tag_name: ${{ env.TAG }}
           files: |
             ${{ env.ASSET }}
