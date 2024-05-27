@@ -16,7 +16,6 @@ pub async fn run_server(port: u16) -> Result<(), Box<dyn Error>> {
     loop {
         let main_stream = listener.accept().await?.0;
         let (read_stream, write_stream) = main_stream.into_split();
-        println!("Client Connected!");
         let mut reader = BufReader::new(read_stream);
         let mut writer= BufWriter::new(write_stream);
 
@@ -47,6 +46,7 @@ pub async fn run_server(port: u16) -> Result<(), Box<dyn Error>> {
         let aes_key_2 = aes_key.clone();
 
         // messaging
+        println!("Client Connected ('quit' to exit this client)!");
         let aes_key_ref = &aes_key[0..16];
         let reciever = recieve_messages(&mut reader, aes_key_ref.try_into()?);
         // let (sender_tx, mut sender_rx) = channel::<i32>(1);

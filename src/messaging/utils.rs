@@ -87,7 +87,7 @@ pub async fn send_messages(writer: &mut BufWriter<OwnedWriteHalf>, aes_key: &[u8
     loop {
         let mut string = String::new();
         std::io::stdin().read_line(&mut string)?;
-        if string == "quit" {
+        if string.trim() == "quit" {
             break
         }
         match writer.write(&generate_message(&string, &aes_key)).await {

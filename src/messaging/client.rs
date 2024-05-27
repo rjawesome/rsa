@@ -46,7 +46,7 @@ pub async fn run_client(host: &str, port: u16) -> Result<(), Box<dyn Error>> {
     writer.write(&enc_aes_key).await?;
     writer.flush().await?;
 
-    println!("Connected to Server!");
+    println!("Connected to Server ('quit' to exit)!");
 
     // messaging
     let aes_key_ref = &aes_key[0..16];
@@ -64,6 +64,8 @@ pub async fn run_client(host: &str, port: u16) -> Result<(), Box<dyn Error>> {
             drop(reader);
         }
     }
+
+    println!("Server disconnected!");
 
     Ok(())
 }

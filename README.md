@@ -1,7 +1,7 @@
 Usage (End-to-end encrypted messaging using RSA/AES):
 ```
-rsa_tool srv <tcp port>
-rsa_tool cli <server ip> <tcp port>
+rsa_tool srv <tcp port> # server
+rsa_tool cli <server ip> <tcp port> # client
 ```
 
 Usage (RSA):
