@@ -1,11 +1,9 @@
 use std::error::Error;
-use std::thread;
 
 use rand::Rng;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::TcpStream;
-use tokio::{join, select, task};
-use tokio::sync::mpsc::channel;
+use tokio::{select, task};
 
 use crate::messaging::utils::{recieve_messages, send_messages};
 use crate::rsa;

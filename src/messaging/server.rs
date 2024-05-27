@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::thread;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::TcpListener;
