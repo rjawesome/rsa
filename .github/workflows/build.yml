@@ -75,7 +75,9 @@ jobs:
           fi
 
       - name: Set current date as env variable
-        run: echo -e "NOW=\"$(git rev-parse --abbrev-ref HEAD) $(date +'%Y-%m-%dT%H:%M:%S')\"\nTAG=$(date +%s)" >> $GITHUB_ENV
+        shell: bash
+        run: |
+          echo -e "TAG=$(date +%s)" >> $GITHUB_ENV
       - name: tag snapshot
         uses: tvdias/github-tagger@v0.0.1
         with:
@@ -85,7 +87,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          name: RSA Tool ${{ env.NOW }}
+          name: RSA Tool (${{ matrix.build }})
           tag_name: ${{ env.TAG }}
           files: |
             ${{ env.ASSET }}
