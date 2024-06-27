@@ -1,7 +1,7 @@
 mod args;
 use std::{env, error::Error, fs, time::SystemTime};
-use rsa_tool::{messaging::{client, server}, rsa};
-use args::{ClientArgs, DecArgs, EncArgs, GenArgs, SrvArgs, Type};
+use rsa_tool::{messaging::{client, new_client, new_server, server}, rsa};
+use args::{ClientArgs, DecArgs, EncArgs, GenArgs, NewClientArgs, SrvArgs, Type};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut all_args = env::args();
@@ -36,9 +36,17 @@ fn main() -> Result<(), Box<dyn Error>> {
             let srv_args = SrvArgs::new(all_args)?;
             server::run_server(srv_args.port)?;
         },
+        Type::NewServer => {
+            let srv_args = SrvArgs::new(all_args)?;
+            new_server::run_new_server(srv_args.port)?;
+        }
         Type::Client => {
             let cli_args = ClientArgs::new(all_args)?;
             client::run_client(&cli_args.host, cli_args.port)?;
+        },
+        Type::NewClient => {
+            let cli_args = NewClientArgs::new(all_args)?;
+            new_client::run_new_client(&cli_args.host, cli_args.port, &cli_args.src_username, &cli_args.dst_username)?;
         }
     }
 

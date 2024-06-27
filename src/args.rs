@@ -3,22 +3,26 @@ pub enum Type {
     Decode,
     Encode,
     Server,
-    Client
+    NewServer,
+    Client,
+    NewClient
 }
 
 pub fn get_type(args: &mut impl Iterator<Item = String>) -> Result<Type, &'static str> {
     args.next();
     let type_str = match args.next() {
         Some(x) => x,
-        None => return Err("Not operation specified. Usage: rsa_tool <gen|dec|enc|srv|cli> <other arguments>")
+        None => return Err("Not operation specified. Usage: rsa_tool <gen|dec|enc|srv|newsrv|cli|newcli> <other arguments>")
     };
     match type_str.as_str() {
         "gen" => Ok(Type::GenKeys),
         "enc" => Ok(Type::Encode),
         "dec" => Ok(Type::Decode),
         "srv" => Ok(Type::Server),
+        "newsrv" => Ok(Type::NewServer),
         "cli" => Ok(Type::Client),
-        _ => Err("Invalid operation. Usage: rsa_tool <gen|dec|enc|srv|cli> <other arguments>")
+        "newcli" => Ok(Type::NewClient),
+        _ => Err("Invalid operation. Usage: rsa_tool <gen|dec|enc|srv|bewsrv|cli|newcli> <other arguments>")
     }
 }
 
@@ -105,7 +109,7 @@ impl SrvArgs {
     pub fn new(mut args: impl Iterator<Item = String>) -> Result<SrvArgs, &'static str> {
         let port_str = match args.next() {
             Some(x) => x,
-            None => return Err("Not enough arguments. Usage: rsa_tool srv <tcp port>")
+            None => return Err("Not enough arguments. Usage: rsa_tool <srv|newsrv> <tcp port>")
         };
         let port = match port_str.parse::<u16>() {
             Ok(x) => x,
@@ -138,5 +142,42 @@ impl ClientArgs {
         };
 
         Ok(ClientArgs { host, port })
+    }
+}
+
+pub struct NewClientArgs {
+    pub host: String,
+    pub port: u16,
+    pub src_username: String,
+    pub dst_username: String
+}
+
+impl NewClientArgs {
+    pub fn new(mut args: impl Iterator<Item = String>) -> Result<NewClientArgs, &'static str> {
+        let host = match args.next() {
+            Some(x) => x,
+            None => return Err("Not enough arguments. Usage: rsa_tool newcli <tcp server> <tcp port> <your username> <other/destination username>")
+        };
+
+        let port_str = match args.next() {
+            Some(x) => x,
+            None => return Err("Not enough arguments. Usage: rsa_tool newcli <tcp server> <tcp port> <your username> <other/destination username>")
+        };
+        let port = match port_str.parse::<u16>() {
+            Ok(x) => x,
+            Err(_) => return Err("Invalid port specified.")
+        };
+
+        let src_username = match args.next() {
+            Some(x) => x,
+            None => return Err("Not enough arguments. Usage: rsa_tool newcli <tcp server> <tcp port> <your username> <other/destination username>")
+        };
+
+        let dst_username = match args.next() {
+            Some(x) => x,
+            None => return Err("Not enough arguments. Usage: rsa_tool newcli <tcp server> <tcp port> <your username> <other/destination username>")
+        };
+
+        Ok(NewClientArgs { host, port, src_username, dst_username })
     }
 }

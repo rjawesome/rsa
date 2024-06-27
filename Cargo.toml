@@ -10,5 +10,6 @@ rand = "0.8"
 ibig = "0.3.6"
 num-traits = "0.2.14"
 libaes = "0.7.0"
+md5 = "0.7.0"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7.11"
