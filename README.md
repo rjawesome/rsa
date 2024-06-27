@@ -2,6 +2,7 @@
 - The releases for all OSes are avaliable in the releases page (each OS has its own release)
 
 # Usage (End-to-end encrypted client-to-client [via server] messaging using RSA/AES):
+![image](https://github.com/rjawesome/rsa/assets/16053597/31d6d7c4-b7f3-4121-aed0-cc19f8632879)
 ```
 rsa_tool newsrv <tcp port> # external server
 rsa_tool newcli <server ip> <tcp port> <your username> <other username> # when connection is established, keys can be verified if server is sus
@@ -10,6 +11,7 @@ rsa_tool newcli <server ip> <tcp port> <your username> <other username> # when c
 # alice runs: rsa_tool newcli localhost 3000 alice bob
 # bob runs: rsa_tool newcli localhost 3000 bob alice
 ```
+
 
 # Usage (End-to-end encrypted server-to-client messaging using RSA/AES):
 ```
